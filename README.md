@@ -1,3 +1,7 @@
+* Objective
+Learn OBJC under Linux.
+
+* Manual
 Run docker container:
 <pre>
 docker run -it --name=objc.${USER} yijinliu/objc:2017-04-29
