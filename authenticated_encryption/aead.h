@@ -6,13 +6,14 @@
 @interface AEAD : NSObject
 {
     uint32_t aesKey[44];
+    uint8_t hmacKey[32];
 }
 
-- (id) initWithAESKey:(NSData *)aes128Key hmacKey:(NSData *)hmacSha256Key
+- (id) init:(NSData *)aes128Key hmacSha256Key:(NSData *)hmacSha256Key;
 
-- (NSData *)seal:(NSData *)plainText nonce:(NSData *)nonce additionalData:(NSData *)additionalData
+- (NSData *)seal:(NSData *)plainText nonce:(NSData *)nonce additionalData:(NSData *)additionalData;
 
-- (NSData *)open:(NSData *)cipherText nonce:(NSData *)nonce additionalData:(NSData *)additionalData
+//- (NSData *)open:(NSData *)cipherText nonce:(NSData *)nonce additionalData:(NSData *)additionalData;
 
 @end
 

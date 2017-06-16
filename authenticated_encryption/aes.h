@@ -1,25 +1,22 @@
 #ifndef AES_H
 #define AES_H
 
-#include <stddef.h>
+#include <inttypes.h>
 
 #define AES_BLOCK_SIZE 16               // AES operates on 16 bytes at a time
 
-typedef uint8_t BYTE;            // 8-bit byte
-typedef uint32_t WORD;             // 32-bit word, change to "long" for 16-bit machines
-
-void aes_key_setup(const BYTE key[],          // The key, must be 128, 192, or 256 bits
-                   WORD w[],                  // Output key schedule to be used later
+void aes_key_setup(const uint8_t key[],          // The key, must be 128, 192, or 256 bits
+                   uint32_t w[],                  // Output key schedule to be used later
                    int keysize);              // Bit length of the key, 128, 192, or 256
 
-void aes_encrypt(const BYTE in[],             // 16 bytes of plaintext
-                 BYTE out[],                  // 16 bytes of ciphertext
-                 const WORD key[],            // From the key setup
+void aes_encrypt(const uint8_t in[],             // 16 bytes of plaintext
+                 uint8_t out[],                  // 16 bytes of ciphertext
+                 const uint32_t key[],            // From the key setup
                  int keysize);                // Bit length of the key, 128, 192, or 256
 
-void aes_decrypt(const BYTE in[],             // 16 bytes of ciphertext
-                 BYTE out[],                  // 16 bytes of plaintext
-                 const WORD key[],            // From the key setup
+void aes_decrypt(const uint8_t in[],             // 16 bytes of ciphertext
+                 uint8_t out[],                  // 16 bytes of plaintext
+                 const uint32_t key[],            // From the key setup
                  int keysize);                // Bit length of the key, 128, 192, or 256
 
 #endif   // AES_H

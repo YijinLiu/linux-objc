@@ -5,10 +5,14 @@
 
 @implementation AEAD
 
-- (id) initWithAESKey:(NSData *)aes128Key hmacKey:(NSData *)hmacSha256Key
+- (id) init:(NSData *)aes128Key hmacSha256Key:(NSData *)hmacSha256Key
 {
+    self = [super init];
     // TODO: Check aes128Key is 16 bytes.
     aes_key_setup((uint8_t*)[aes128Key bytes], aesKey, 128);
+    // TODO: Check hmacKey is 32 bytes.
+    [hmacSha256Key getBytes:hmacKey length:32];
+    return self;
 }
 
 - (NSData *)seal:(NSData *)plainText nonce:(NSData *)nonce additionalData:(NSData *)additionalData
@@ -20,9 +24,9 @@
     counter[12] = counter[13] = counter[14] = counter[15] = 0;
 
     // Encrypt plainText using AES CTR mode.
-    int len = [cipherText length];
+    int len = [plainText length];
     NSMutableData *cipherText = [NSMutableData dataWithCapacity:len+32];
-    [cipherText append:plainText];
+    [cipherText appendData:plainText];
     uint8_t* encryptedBytes = [cipherText mutableBytes];
     for (int i = 0; i < len; i+=16) {
         uint8_t encryptedCounter[16];
@@ -56,7 +60,7 @@
     }
     [msg appendBytes:bytes length:8];
     // Append len as little endian 64 bit integer.
-    u64Data = adLen;
+    u64Data = len;
     for (int i = 0; i < 8; i++) {
         bytes[i] = u64Data & 0xff;
         u64Data >>= 8;
@@ -70,9 +74,26 @@
     [msg increaseLengthBy:pad];
     // Append cipherText.
     [msg appendData:cipherText];
+    const uint8_t* msgBytes = [msg bytes];
+
+    // HMAC.
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    uint8_t tmpKey[64];
+    for (int i = 0; i < 32; i++) tmpKey[i] = hmacKey[i] ^ 0x36;
+    for (int i = 32; i < 64; i++) tmpKey[i] = 0x36;
+    sha256_update(&ctx, tmpKey, 64);
+    sha256_update(&ctx, msgBytes, msgLen);
     uint8_t hash[32];
-    hmac_sha256([hmacKey bytes], [msg bytes], msgLen, hash);
-    [cipherText appendBytes:hash, 32];
+    sha256_final(&ctx, hash);
+    sha256_init(&ctx);
+    for (int i = 0; i < 32; i++) tmpKey[i] = hmacKey[i] ^ 0x5c;
+    for (int i = 32; i < 64; i++) tmpKey[i] = 0x5c;
+    sha256_update(&ctx, tmpKey, 64);
+    sha256_update(&ctx, hash, 32);
+    sha256_final(&ctx, hash);
+
+    [cipherText appendBytes:hash length:32];
     return cipherText;
 }
 

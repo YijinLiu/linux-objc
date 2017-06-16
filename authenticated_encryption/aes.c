@@ -5,7 +5,7 @@
 #include <memory.h>
 
 // The least significant byte of the word is rotated to the end.
-#define KE_ROTWORD(x) (((x) << 8) | ((x) >> 24))
+#define KE_ROTuint32_t(x) (((x) << 8) | ((x) >> 24))
 
 #define TRUE  1
 #define FALSE 0
@@ -16,7 +16,7 @@
 
 // This is the specified AES SBox. To look up a substitution value, put the first
 // nibble in the first index (row) and the second nibble in the second index (column).
-static const BYTE aes_sbox[16][16] = {
+static const uint8_t aes_sbox[16][16] = {
 	{0x63,0x7C,0x77,0x7B,0xF2,0x6B,0x6F,0xC5,0x30,0x01,0x67,0x2B,0xFE,0xD7,0xAB,0x76},
 	{0xCA,0x82,0xC9,0x7D,0xFA,0x59,0x47,0xF0,0xAD,0xD4,0xA2,0xAF,0x9C,0xA4,0x72,0xC0},
 	{0xB7,0xFD,0x93,0x26,0x36,0x3F,0xF7,0xCC,0x34,0xA5,0xE5,0xF1,0x71,0xD8,0x31,0x15},
@@ -35,7 +35,7 @@ static const BYTE aes_sbox[16][16] = {
 	{0x8C,0xA1,0x89,0x0D,0xBF,0xE6,0x42,0x68,0x41,0x99,0x2D,0x0F,0xB0,0x54,0xBB,0x16}
 };
 
-static const BYTE aes_invsbox[16][16] = {
+static const uint8_t aes_invsbox[16][16] = {
 	{0x52,0x09,0x6A,0xD5,0x30,0x36,0xA5,0x38,0xBF,0x40,0xA3,0x9E,0x81,0xF3,0xD7,0xFB},
 	{0x7C,0xE3,0x39,0x82,0x9B,0x2F,0xFF,0x87,0x34,0x8E,0x43,0x44,0xC4,0xDE,0xE9,0xCB},
 	{0x54,0x7B,0x94,0x32,0xA6,0xC2,0x23,0x3D,0xEE,0x4C,0x95,0x0B,0x42,0xFA,0xC3,0x4E},
@@ -60,7 +60,7 @@ static const BYTE aes_invsbox[16][16] = {
 // coefficients are used: 0x01, 0x02, 0x03, 0x09, 0x0b, 0x0d, 0x0e, but multiplication by
 // 1 is negligible leaving only 6 coefficients. Each column of the table is devoted to one
 // of these coefficients, in the ascending order of value, from values 0x00 to 0xFF.
-static const BYTE gf_mul[256][6] = {
+static const uint8_t gf_mul[256][6] = {
 	{0x00,0x00,0x00,0x00,0x00,0x00},{0x02,0x03,0x09,0x0b,0x0d,0x0e},
 	{0x04,0x06,0x12,0x16,0x1a,0x1c},{0x06,0x05,0x1b,0x1d,0x17,0x12},
 	{0x08,0x0c,0x24,0x2c,0x34,0x38},{0x0a,0x0f,0x2d,0x27,0x39,0x36},
@@ -192,7 +192,7 @@ static const BYTE gf_mul[256][6] = {
 };
 
 // XORs the in and out buffers, storing the result in out. Length is in bytes.
-void xor_buf(const BYTE in[], BYTE out[], size_t len)
+void xor_buf(const uint8_t in[], uint8_t out[], size_t len)
 {
 	size_t idx;
 
@@ -201,7 +201,7 @@ void xor_buf(const BYTE in[], BYTE out[], size_t len)
 }
 
 // Substitutes a word using the AES S-Box.
-WORD SubWord(WORD word)
+uint32_t SubWord(uint32_t word)
 {
 	unsigned int result;
 
@@ -215,10 +215,10 @@ WORD SubWord(WORD word)
 // Performs the action of generating the keys that will be used in every round of
 // encryption. "key" is the user-supplied input key, "w" is the output key schedule,
 // "keysize" is the length in bits of "key", must be 128, 192, or 256.
-void aes_key_setup(const BYTE key[], WORD w[], int keysize)
+void aes_key_setup(const uint8_t key[], uint32_t w[], int keysize)
 {
 	int Nb=4,Nr,Nk,idx;
-	WORD temp,Rcon[]={0x01000000,0x02000000,0x04000000,0x08000000,0x10000000,0x20000000,
+	uint32_t temp,Rcon[]={0x01000000,0x02000000,0x04000000,0x08000000,0x10000000,0x20000000,
 	                  0x40000000,0x80000000,0x1b000000,0x36000000,0x6c000000,0xd8000000,
 	                  0xab000000,0x4d000000,0x9a000000};
 
@@ -237,7 +237,7 @@ void aes_key_setup(const BYTE key[], WORD w[], int keysize)
 	for (idx = Nk; idx < Nb * (Nr+1); ++idx) {
 		temp = w[idx - 1];
 		if ((idx % Nk) == 0)
-			temp = SubWord(KE_ROTWORD(temp)) ^ Rcon[(idx-1)/Nk];
+			temp = SubWord(KE_ROTuint32_t(temp)) ^ Rcon[(idx-1)/Nk];
 		else if (Nk > 6 && (idx % Nk) == 4)
 			temp = SubWord(temp);
 		w[idx] = w[idx-Nk] ^ temp;
@@ -252,9 +252,9 @@ void aes_key_setup(const BYTE key[], WORD w[], int keysize)
 // form of 4 integers (the "w" array). Each integer is XOR'd by one column of the state.
 // Also performs the job of InvAddRoundKey(); since the function is a simple XOR process,
 // it is its own inverse.
-void AddRoundKey(BYTE state[][4], const WORD w[])
+void AddRoundKey(uint8_t state[][4], const uint32_t w[])
 {
-	BYTE subkey[4];
+	uint8_t subkey[4];
 
 	// memcpy(subkey,&w[idx],4); // Not accurate for big endian machines
 	// Subkey 1
@@ -301,7 +301,7 @@ void AddRoundKey(BYTE state[][4], const WORD w[])
 
 // Performs the SubBytes step. All bytes in the state are substituted with a
 // pre-calculated value from a lookup table.
-void SubBytes(BYTE state[][4])
+void SubBytes(uint8_t state[][4])
 {
 	state[0][0] = aes_sbox[state[0][0] >> 4][state[0][0] & 0x0F];
 	state[0][1] = aes_sbox[state[0][1] >> 4][state[0][1] & 0x0F];
@@ -321,7 +321,7 @@ void SubBytes(BYTE state[][4])
 	state[3][3] = aes_sbox[state[3][3] >> 4][state[3][3] & 0x0F];
 }
 
-void InvSubBytes(BYTE state[][4])
+void InvSubBytes(uint8_t state[][4])
 {
 	state[0][0] = aes_invsbox[state[0][0] >> 4][state[0][0] & 0x0F];
 	state[0][1] = aes_invsbox[state[0][1] >> 4][state[0][1] & 0x0F];
@@ -346,7 +346,7 @@ void InvSubBytes(BYTE state[][4])
 /////////////////
 
 // Performs the ShiftRows step. All rows are shifted cylindrically to the left.
-void ShiftRows(BYTE state[][4])
+void ShiftRows(uint8_t state[][4])
 {
 	int t;
 
@@ -372,7 +372,7 @@ void ShiftRows(BYTE state[][4])
 }
 
 // All rows are shifted cylindrically to the right.
-void InvShiftRows(BYTE state[][4])
+void InvShiftRows(uint8_t state[][4])
 {
 	int t;
 
@@ -405,9 +405,9 @@ void InvShiftRows(BYTE state[][4])
 // multiplication in a Galios Field 2^8. All multiplication is pre-computed in a table.
 // Addition is equivilent to XOR. (Must always make a copy of the column as the original
 // values will be destoyed.)
-void MixColumns(BYTE state[][4])
+void MixColumns(uint8_t state[][4])
 {
-	BYTE col[4];
+	uint8_t col[4];
 
 	// Column 1
 	col[0] = state[0][0];
@@ -495,9 +495,9 @@ void MixColumns(BYTE state[][4])
 	state[3][3] ^= gf_mul[col[3]][0];
 }
 
-void InvMixColumns(BYTE state[][4])
+void InvMixColumns(uint8_t state[][4])
 {
-	BYTE col[4];
+	uint8_t col[4];
 
 	// Column 1
 	col[0] = state[0][0];
@@ -589,9 +589,9 @@ void InvMixColumns(BYTE state[][4])
 // (En/De)Crypt
 /////////////////
 
-void aes_encrypt(const BYTE in[], BYTE out[], const WORD key[], int keysize)
+void aes_encrypt(const uint8_t in[], uint8_t out[], const uint32_t key[], int keysize)
 {
-	BYTE state[4][4];
+	uint8_t state[4][4];
 
 	// Copy input array (should be 16 bytes long) to a matrix (sequential bytes are ordered
 	// by row, not col) called "state" for processing.
@@ -662,9 +662,9 @@ void aes_encrypt(const BYTE in[], BYTE out[], const WORD key[], int keysize)
 	out[15] = state[3][3];
 }
 
-void aes_decrypt(const BYTE in[], BYTE out[], const WORD key[], int keysize)
+void aes_decrypt(const uint8_t in[], uint8_t out[], const uint32_t key[], int keysize)
 {
-	BYTE state[4][4];
+	uint8_t state[4][4];
 
 	// Copy the input to the state.
 	state[0][0] = in[0];
